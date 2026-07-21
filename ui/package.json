@@ -6,6 +6,7 @@
   "scripts": {
     "start": "electron .",
     "dev": "electron . --dev",
+    "build:engine": "python -m PyInstaller --clean --onefile --name vericore-engine --distpath ..\\engine\\dist --workpath ..\\engine\\build --specpath ..\\engine ..\\engine\\main.py",
     "build": "electron-builder"
   },
   "keywords": [
@@ -17,14 +18,32 @@
   "author": "VeriCore",
   "license": "MIT",
   "devDependencies": {
-    "electron": "^36.4.0"
+    "electron": "^36.4.0",
+    "electron-builder": "^26.0.12"
   },
   "build": {
     "appId": "com.vericore.app",
     "productName": "VeriCore",
+    "files": [
+      "**/*",
+      "!dist/**",
+      "!node_modules/.cache/**"
+    ],
+    "extraResources": [
+      {
+        "from": "../engine/dist/vericore-engine.exe",
+        "to": "engine/vericore-engine.exe"
+      }
+    ],
     "win": {
       "target": "nsis",
       "icon": "src/assets/icon.ico"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "perMachine": true,
+      "allowElevation": true
     }
   },
   "dependencies": {

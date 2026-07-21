@@ -5,6 +5,7 @@ const { execSync, spawn } = require('child_process');
 
 let mainWindow = null;
 let wsClient = null;
+let engineProcess = null;
 
 // ── Admin Check & UAC Elevation ─────────────────────────────
 function isAdmin() {
@@ -35,6 +36,49 @@ function relaunchAsAdmin() {
   ], { detached: true, stdio: 'ignore' }).unref();
   
   app.quit();
+}
+
+function resolveEnginePath() {
+  if (app.isPackaged) {
+    return path.join(process.resourcesPath, 'engine', 'vericore-engine.exe');
+  }
+
+  return path.join(__dirname, '..', 'engine', 'main.py');
+}
+
+function startEngine() {
+  if (engineProcess) return;
+
+  const enginePath = resolveEnginePath();
+  const command = app.isPackaged ? enginePath : 'python';
+  const args = app.isPackaged ? [] : [enginePath];
+
+  try {
+    engineProcess = spawn(command, args, {
+      cwd: path.dirname(enginePath),
+      windowsHide: true,
+      stdio: 'ignore',
+    });
+
+    engineProcess.on('exit', () => {
+      engineProcess = null;
+    });
+  } catch (err) {
+    console.warn('Unable to start VeriCore engine:', err.message);
+    engineProcess = null;
+  }
+}
+
+function stopEngine() {
+  if (!engineProcess) return;
+
+  try {
+    engineProcess.kill();
+  } catch {
+    // Engine may already be closed.
+  }
+
+  engineProcess = null;
 }
 
 function createWindow() {
@@ -199,11 +243,22 @@ ipcMain.handle('save-report', async (_event, reportJson) => {
 });
 
 app.whenReady().then(() => {
+  if (process.platform === 'win32' && app.isPackaged && !isAdmin()) {
+    relaunchAsAdmin();
+    return;
+  }
+
+  startEngine();
   createWindow();
 });
 
 app.on('window-all-closed', () => {
+  stopEngine();
   if (process.platform !== 'darwin') app.quit();
+});
+
+app.on('before-quit', () => {
+  stopEngine();
 });
 
 // IPC: Relaunch as Admin (from Settings panel)
