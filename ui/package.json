@@ -17,6 +17,10 @@
   ],
   "author": "VeriCore",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Hacktod20/vericore.git"
+  },
   "devDependencies": {
     "electron": "^36.4.0",
     "electron-builder": "^26.0.12"
@@ -44,7 +48,14 @@
       "allowToChangeInstallationDirectory": true,
       "perMachine": true,
       "allowElevation": true
-    }
+    },
+    "publish": [
+      {
+        "provider": "github",
+        "owner": "Hacktod20",
+        "repo": "vericore"
+      }
+    ]
   },
   "dependencies": {
     "ws": "^8.21.1"
