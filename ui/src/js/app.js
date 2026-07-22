@@ -8,7 +8,7 @@
 // ── Mock Data ──────────────────────────────────────
 const MOCK_REPORT = {
   timestamp: new Date().toISOString(),
-  vericore_version: '1.0.0',
+  vericore_version: '1.0.1',
   scores: {
     health_score: 87,
     authenticity_score: 94,
