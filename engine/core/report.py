@@ -8,7 +8,7 @@ class ReportGenerator:
     def generate(self, collected_data: dict, scores: dict, inconsistencies: list) -> dict:
         report = {
             "timestamp": datetime.datetime.now().isoformat(),
-            "vericore_version": "1.0.1",
+            "vericore_version": "1.0.2",
             "scan_duration_note": "Deep hardware inspection",
             "scores": scores,
             "system_summary": self._extract_summary(collected_data),

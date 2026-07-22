@@ -118,7 +118,7 @@ async def handle_client(websocket):
             action = data.get('action')
             
             if action == 'ping':
-                await websocket.send(json.dumps({"status": "ok", "version": "1.0.1"}))
+                await websocket.send(json.dumps({"status": "ok", "version": "1.0.2"}))
                 
             elif action == 'scan':
                 logger.info("Starting hardware scan sequence...")
