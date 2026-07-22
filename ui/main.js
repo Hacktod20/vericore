@@ -99,7 +99,14 @@ function createWindow() {
     show: false,
   });
 
-  mainWindow.loadFile(path.join(__dirname, 'src', 'index.html'));
+  // FIX: Use file:// protocol for packaged apps
+  if (app.isPackaged) {
+    const indexPath = path.join(__dirname, 'src', 'index.html');
+    mainWindow.loadFile(indexPath);
+  } else {
+    const indexPath = path.join(__dirname, 'src', 'index.html');
+    mainWindow.loadFile(indexPath);
+  }
 
   mainWindow.once('ready-to-show', () => {
     mainWindow.show();
