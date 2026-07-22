@@ -1,6 +1,13 @@
 const { app, BrowserWindow, ipcMain, dialog, Menu, shell } = require('electron');
 const path = require('path');
-const WebSocket = require('ws');
+const WebSocket = (() => {
+  try {
+    const wsPath = require.resolve('ws/package.json');
+    return require(path.join(path.dirname(wsPath), 'index.js'));
+  } catch (e) {
+    return require('ws');
+  }
+})();
 const { execSync, spawn } = require('child_process');
 
 let mainWindow = null;
