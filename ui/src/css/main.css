@@ -416,9 +416,10 @@ body {
 }
 
 .panel-row {
-  display: flex;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
-  justify-content: space-between;
+  gap: 16px;
   padding: 10px 12px;
   border-radius: var(--radius-sm);
   background: rgba(255, 255, 255, 0.01);
@@ -432,7 +433,6 @@ body {
   display: flex;
   align-items: center;
   gap: 12px;
-  flex: 1;
   min-width: 0;
 }
 
@@ -479,16 +479,12 @@ body {
   display: flex;
   align-items: center;
   gap: 12px;
-  flex-shrink: 0;
+  white-space: nowrap;
 }
 .row-meta {
   font-size: 0.78rem;
   color: var(--text-secondary);
   text-align: right;
-  max-width: 150px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
 }
 .row-status {
   flex-shrink: 0;
@@ -1117,3 +1113,42 @@ body {
 .rec-title  { font-size: 0.88rem; font-weight: 600; color: var(--text-primary); margin-bottom: 4px; }
 .rec-detail { font-size: 0.78rem; color: var(--text-secondary); line-height: 1.5; margin-bottom: 4px; }
 .rec-action { font-size: 0.75rem; color: var(--accent-cyan); font-style: italic; }
+
+/* -- OTA Modal ------------------------------------- */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.modal {
+  width: 400px;
+  max-width: 90%;
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  box-shadow: 0 10px 40px rgba(0,0,0,0.5);
+}
+.modal-header h2 {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+.modal-body p {
+  font-size: 0.9rem;
+  color: var(--text-secondary);
+  line-height: 1.5;
+}
+.modal-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  margin-top: 8px;
+}
+

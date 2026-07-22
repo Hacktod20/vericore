@@ -449,6 +449,30 @@ class VeriCoreApp {
     const progressRow = document.getElementById('setting-update-progress-row');
     const progressBar = document.getElementById('setting-update-progress-bar');
 
+    // Modal elements
+    const otaModal = document.getElementById('ota-modal');
+    const otaModalText = document.getElementById('ota-modal-text');
+    const otaModalTrack = document.getElementById('ota-modal-progress-track');
+    const otaModalBar = document.getElementById('ota-modal-progress-bar');
+    const btnOtaCancel = document.getElementById('btn-ota-cancel');
+    const btnOtaAction = document.getElementById('btn-ota-action');
+
+    if (btnOtaCancel) {
+      btnOtaCancel.addEventListener('click', () => {
+        otaModal.style.display = 'none';
+      });
+    }
+
+    if (btnOtaAction) {
+      btnOtaAction.addEventListener('click', async () => {
+        if (btnOtaAction.textContent === 'Install Now') {
+          await window.vericore.installUpdate();
+        } else {
+          // It's 'Download' or waiting
+        }
+      });
+    }
+
     if (btnCheck && window.vericore) {
       btnCheck.addEventListener('click', async () => {
         btnCheck.disabled = true;
@@ -477,6 +501,13 @@ class VeriCoreApp {
             statusTxt.textContent = `Update available (v${data.version})!`;
             statusTxt.style.color = 'var(--warning)';
             if (progressRow) progressRow.style.display = 'flex';
+            if (otaModal) {
+              otaModalText.textContent = `A new version of VeriCore (v${data.version}) is available.`;
+              btnOtaAction.textContent = 'Downloading...';
+              btnOtaAction.disabled = true;
+              otaModalTrack.style.display = 'flex';
+              otaModal.style.display = 'flex';
+            }
             break;
           case 'up-to-date':
             statusTxt.textContent = 'You are on the latest version ✓';
@@ -486,12 +517,18 @@ class VeriCoreApp {
               btnCheck.textContent = 'Check Now';
             }
             if (progressRow) progressRow.style.display = 'none';
+            if (otaModal) otaModal.style.display = 'none';
             break;
           case 'downloading':
             statusTxt.textContent = `Downloading... (${data.percent}%)`;
             statusTxt.style.color = 'var(--accent-cyan)';
             if (progressBar) progressBar.style.width = `${data.percent}%`;
             if (progressRow) progressRow.style.display = 'flex';
+            if (otaModal && otaModalBar) {
+              otaModal.style.display = 'flex';
+              btnOtaAction.textContent = `Downloading (${data.percent}%)`;
+              otaModalBar.style.width = `${data.percent}%`;
+            }
             break;
           case 'downloaded':
             statusTxt.textContent = `Version v${data.version} downloaded! Ready to apply.`;
@@ -499,6 +536,13 @@ class VeriCoreApp {
             if (progressRow) progressRow.style.display = 'none';
             if (btnCheck) btnCheck.style.display = 'none';
             if (btnInstall) btnInstall.style.display = 'inline-flex';
+            if (otaModal) {
+              otaModal.style.display = 'flex';
+              otaModalText.textContent = `Version v${data.version} has been downloaded and is ready to install.`;
+              otaModalTrack.style.display = 'none';
+              btnOtaAction.textContent = 'Install Now';
+              btnOtaAction.disabled = false;
+            }
             break;
           case 'error':
             statusTxt.textContent = `Check failed: ${data.message || 'Offline'}`;
