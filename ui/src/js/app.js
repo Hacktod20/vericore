@@ -323,6 +323,14 @@ class VeriCoreApp {
       window.vericore.getBasicSystemInfo().then(info => {
         const memGB = (info.memory / 1e9).toFixed(1);
         
+        // Update version in UI dynamically
+        if (info.version) {
+          const sidebarVersionEl = document.getElementById('sidebar-version');
+          if (sidebarVersionEl) sidebarVersionEl.textContent = `v${info.version}`;
+          const aboutVersionEl = document.querySelector('.about-version');
+          if (aboutVersionEl) aboutVersionEl.textContent = `Version ${info.version}`;
+        }
+
         // Update identity panel
         this._setText('id-manufacturer', 'Pending Scan');
         this._setText('id-model', 'Pending Scan');
