@@ -42,7 +42,7 @@ contextBridge.exposeInMainWorld('vericore', {
 
   // OTA Updates
   checkForUpdates: () => ipcRenderer.invoke('check-for-updates'),
-  installUpdate: () => ipcRenderer.invoke('install-update'),
+  openExternalUrl: (url) => ipcRenderer.invoke('open-external-url', url),
   onUpdateStatus: (callback) => {
     ipcRenderer.on('update-status', (_event, data) => callback(data));
   },

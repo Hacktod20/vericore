@@ -124,6 +124,10 @@ class VeriCoreApp {
 
     if (window.vericore) {
       const result = await window.vericore.startScan();
+      if (result.needsAdmin) {
+        window.vericore.relaunchAdmin();
+        return;
+      }
       if (result.demo) {
         alert('VeriCore engine is currently offline. Please run your terminal or backend engine as Administrator.');
       }
@@ -464,11 +468,10 @@ class VeriCoreApp {
     }
 
     if (btnOtaAction) {
-      btnOtaAction.addEventListener('click', async () => {
-        if (btnOtaAction.textContent === 'Install Now') {
-          await window.vericore.installUpdate();
-        } else {
-          // It's 'Download' or waiting
+      btnOtaAction.addEventListener('click', () => {
+        if (window._latestReleaseUrl && window.vericore && window.vericore.openExternalUrl) {
+          window.vericore.openExternalUrl(window._latestReleaseUrl);
+          if (otaModal) otaModal.style.display = 'none';
         }
       });
     }
@@ -477,14 +480,14 @@ class VeriCoreApp {
       btnCheck.addEventListener('click', async () => {
         btnCheck.disabled = true;
         btnCheck.textContent = 'Checking...';
-        if (statusTxt) statusTxt.textContent = 'Connecting to release channel...';
+        if (statusTxt) statusTxt.textContent = 'Connecting to GitHub...';
         await window.vericore.checkForUpdates();
       });
     }
 
     if (btnInstall && window.vericore) {
       btnInstall.addEventListener('click', async () => {
-        await window.vericore.installUpdate();
+        // Obsolete, keeping for safety, but hidden
       });
     }
 
@@ -500,13 +503,17 @@ class VeriCoreApp {
           case 'available':
             statusTxt.textContent = `Update available (v${data.version})!`;
             statusTxt.style.color = 'var(--warning)';
-            if (progressRow) progressRow.style.display = 'flex';
+            window._latestReleaseUrl = data.url;
             if (otaModal) {
               otaModalText.textContent = `A new version of VeriCore (v${data.version}) is available.`;
-              btnOtaAction.textContent = 'Downloading...';
-              btnOtaAction.disabled = true;
-              otaModalTrack.style.display = 'flex';
+              btnOtaAction.textContent = 'Get Update';
+              btnOtaAction.disabled = false;
+              if (otaModalTrack) otaModalTrack.style.display = 'none';
               otaModal.style.display = 'flex';
+            }
+            if (btnCheck) {
+              btnCheck.disabled = false;
+              btnCheck.textContent = 'Check Again';
             }
             break;
           case 'up-to-date':
@@ -516,33 +523,7 @@ class VeriCoreApp {
               btnCheck.disabled = false;
               btnCheck.textContent = 'Check Now';
             }
-            if (progressRow) progressRow.style.display = 'none';
             if (otaModal) otaModal.style.display = 'none';
-            break;
-          case 'downloading':
-            statusTxt.textContent = `Downloading... (${data.percent}%)`;
-            statusTxt.style.color = 'var(--accent-cyan)';
-            if (progressBar) progressBar.style.width = `${data.percent}%`;
-            if (progressRow) progressRow.style.display = 'flex';
-            if (otaModal && otaModalBar) {
-              otaModal.style.display = 'flex';
-              btnOtaAction.textContent = `Downloading (${data.percent}%)`;
-              otaModalBar.style.width = `${data.percent}%`;
-            }
-            break;
-          case 'downloaded':
-            statusTxt.textContent = `Version v${data.version} downloaded! Ready to apply.`;
-            statusTxt.style.color = 'var(--success)';
-            if (progressRow) progressRow.style.display = 'none';
-            if (btnCheck) btnCheck.style.display = 'none';
-            if (btnInstall) btnInstall.style.display = 'inline-flex';
-            if (otaModal) {
-              otaModal.style.display = 'flex';
-              otaModalText.textContent = `Version v${data.version} has been downloaded and is ready to install.`;
-              otaModalTrack.style.display = 'none';
-              btnOtaAction.textContent = 'Install Now';
-              btnOtaAction.disabled = false;
-            }
             break;
           case 'error':
             statusTxt.textContent = `Check failed: ${data.message || 'Offline'}`;
@@ -551,7 +532,6 @@ class VeriCoreApp {
               btnCheck.disabled = false;
               btnCheck.textContent = 'Check Now';
             }
-            if (progressRow) progressRow.style.display = 'none';
             break;
         }
       });

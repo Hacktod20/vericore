@@ -9,7 +9,6 @@ const WebSocket = (() => {
   }
 })();
 const { execSync, spawn } = require('child_process');
-const { autoUpdater } = require('electron-updater');
 
 let mainWindow = null;
 let wsClient = null;
@@ -151,50 +150,6 @@ function createWindow() {
   });
 
   buildMenu();
-  setupAutoUpdater();
-}
-
-function setupAutoUpdater() {
-  autoUpdater.autoDownload = true;
-
-  autoUpdater.on('checking-for-update', () => {
-    if (mainWindow && !mainWindow.isDestroyed()) {
-      mainWindow.webContents.send('update-status', { status: 'checking' });
-    }
-  });
-
-  autoUpdater.on('update-available', (info) => {
-    if (mainWindow && !mainWindow.isDestroyed()) {
-      mainWindow.webContents.send('update-status', { status: 'available', version: info.version });
-    }
-  });
-
-  autoUpdater.on('update-not-available', (info) => {
-    if (mainWindow && !mainWindow.isDestroyed()) {
-      mainWindow.webContents.send('update-status', { status: 'up-to-date' });
-    }
-  });
-
-  autoUpdater.on('error', (err) => {
-    if (mainWindow && !mainWindow.isDestroyed()) {
-      mainWindow.webContents.send('update-status', { status: 'error', message: err.message });
-    }
-  });
-
-  autoUpdater.on('download-progress', (progressObj) => {
-    if (mainWindow && !mainWindow.isDestroyed()) {
-      mainWindow.webContents.send('update-status', {
-        status: 'downloading',
-        percent: Math.round(progressObj.percent)
-      });
-    }
-  });
-
-  autoUpdater.on('update-downloaded', (info) => {
-    if (mainWindow && !mainWindow.isDestroyed()) {
-      mainWindow.webContents.send('update-status', { status: 'downloaded', version: info.version });
-    }
-  });
 }
 
 function buildMenu() {
@@ -242,6 +197,10 @@ function buildMenu() {
 
 // --- IPC: Start scan by connecting to Python WebSocket engine ---
 ipcMain.handle('start-scan', async () => {
+  if (!isAdmin()) {
+    return { ok: false, needsAdmin: true };
+  }
+
   if (wsClient && wsClient.readyState === WebSocket.OPEN) {
     wsClient.send(JSON.stringify({ action: 'scan' }));
     return { ok: true };
@@ -368,31 +327,37 @@ ipcMain.handle('get-basic-system-info', () => {
 // --- IPC: OTA Updates ---
 ipcMain.handle('check-for-updates', async () => {
   if (!app.isPackaged) {
-    // Simulate a flawless, premium simulated update flow in dev mode
     if (mainWindow && !mainWindow.isDestroyed()) {
       mainWindow.webContents.send('update-status', { status: 'checking' });
       await new Promise(r => setTimeout(r, 1200));
-      mainWindow.webContents.send('update-status', { status: 'available', version: '1.0.3' });
-      await new Promise(r => setTimeout(r, 1500));
-
-      // Live progress simulation
-      for (let p = 15; p <= 100; p += 20) {
-        if (mainWindow && !mainWindow.isDestroyed()) {
-          mainWindow.webContents.send('update-status', { status: 'downloading', percent: Math.min(p, 100) });
-        }
-        await new Promise(r => setTimeout(r, 400));
-      }
-
-      if (mainWindow && !mainWindow.isDestroyed()) {
-        mainWindow.webContents.send('update-status', { status: 'downloaded', version: '1.0.3' });
-      }
+      mainWindow.webContents.send('update-status', { status: 'available', version: '1.1.0', url: 'https://github.com/Hacktod20/vericore/releases' });
     }
     return { simulated: true };
   }
 
   try {
-    const result = await autoUpdater.checkForUpdates();
-    return { ok: true, result };
+    const pjson = require('./package.json');
+    const currentVersion = pjson.version;
+    const response = await fetch('https://api.github.com/repos/Hacktod20/vericore/releases/latest', {
+      headers: { 'User-Agent': 'VeriCore-Updater' }
+    });
+    
+    if (!response.ok) throw new Error(`GitHub API returned ${response.status}`);
+    
+    const data = await response.json();
+    const latestVersion = data.tag_name ? data.tag_name.replace('v', '') : null;
+    
+    if (latestVersion && latestVersion !== currentVersion) {
+      if (mainWindow && !mainWindow.isDestroyed()) {
+        mainWindow.webContents.send('update-status', { status: 'available', version: latestVersion, url: data.html_url });
+      }
+      return { ok: true, updateAvailable: true, version: latestVersion };
+    } else {
+      if (mainWindow && !mainWindow.isDestroyed()) {
+        mainWindow.webContents.send('update-status', { status: 'up-to-date' });
+      }
+      return { ok: true, updateAvailable: false };
+    }
   } catch (err) {
     if (mainWindow && !mainWindow.isDestroyed()) {
       mainWindow.webContents.send('update-status', { status: 'error', message: err.message });
@@ -401,14 +366,9 @@ ipcMain.handle('check-for-updates', async () => {
   }
 });
 
-ipcMain.handle('install-update', () => {
-  if (!app.isPackaged) {
-    dialog.showMessageBoxSync(mainWindow, {
-      type: 'info',
-      title: 'Dev Update Simulated',
-      message: 'Simulating quit and install. In production, this restarts the app and applies the new installer.',
-    });
-    return;
+ipcMain.handle('open-external-url', async (event, url) => {
+  if (url) {
+    shell.openExternal(url);
   }
-  autoUpdater.quitAndInstall();
 });
+
