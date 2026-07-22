@@ -159,10 +159,11 @@ function buildMenu() {
         {
           label: 'About VeriCore',
           click: () => {
+            const pjson = require('./package.json');
             dialog.showMessageBox(mainWindow, {
               type: 'info',
               title: 'VeriCore',
-              message: 'VeriCore v1.0.0',
+              message: `VeriCore v${pjson.version}`,
               detail: 'Device Authenticity & Hardware Inspection Platform\n\nDo not trust. Verify.',
             });
           },
@@ -288,10 +289,12 @@ ipcMain.handle('get-admin-status', () => {
 // IPC: Get basic system info on load
 ipcMain.handle('get-basic-system-info', () => {
   const os = require('os');
+  const pjson = require('./package.json');
   return {
     cpu: os.cpus()[0]?.model || 'Unknown CPU',
     memory: os.totalmem(),
     hostname: os.hostname(),
-    os: `${os.type()} ${os.release()}`
+    os: `${os.type()} ${os.release()}`,
+    version: pjson.version
   };
 });

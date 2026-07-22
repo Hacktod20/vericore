@@ -2,9 +2,20 @@ name: Windows Release
 
 on:
   workflow_dispatch:
+    inputs:
+      bump_type:
+        description: 'Manual version bump type (major, minor, patch, none)'
+        required: true
+        default: 'patch'
+        type: choice
+        options:
+          - patch
+          - minor
+          - major
+          - none
   push:
-    tags:
-      - "v*.*.*"
+    branches:
+      - main
 
 permissions:
   contents: write
@@ -16,6 +27,88 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: ui/package-lock.json
+
+      - name: Determine bump type and update version
+        shell: bash
+        run: |
+          # Check if manual bump type was provided via workflow_dispatch
+          BUMP="${{ github.event.inputs.bump_type }}"
+
+          if [ -z "$BUMP" ]; then
+            # Default bump is patch
+            BUMP="patch"
+            COMMIT_MSG=$(git log -1 --pretty=%B)
+            if [[ "$COMMIT_MSG" == *"[major]"* || "$COMMIT_MSG" == *"#major"* ]]; then
+              BUMP="major"
+            elif [[ "$COMMIT_MSG" == *"[minor]"* || "$COMMIT_MSG" == *"#minor"* || "$COMMIT_MSG" == *"feat:"* ]]; then
+              BUMP="minor"
+            fi
+          fi
+
+          echo "Determined bump type: $BUMP"
+
+          if [ "$BUMP" = "none" ]; then
+            NEW_VERSION=$(node -p "require('./ui/package.json').version")
+            echo "NEW_VERSION=v$NEW_VERSION" >> $GITHUB_ENV
+            echo "No version bump requested. Current version is v$NEW_VERSION"
+            echo "SHOULD_BUMP=false" >> $GITHUB_ENV
+          else
+            cd ui
+            npm version $BUMP --no-git-tag-version
+            NEW_VERSION=$(node -p "require('./package.json').version")
+            echo "NEW_VERSION=v$NEW_VERSION" >> $GITHUB_ENV
+            echo "Bumped version to v$NEW_VERSION"
+            echo "SHOULD_BUMP=true" >> $GITHUB_ENV
+          fi
+
+      - name: Sync version in source files
+        shell: bash
+        run: |
+          node -e "
+            const fs = require('fs');
+            const newVersion = process.env.NEW_VERSION.replace('v', '');
+
+            // 1. engine/main.py
+            let mainPy = fs.readFileSync('engine/main.py', 'utf8');
+            mainPy = mainPy.replace(/\"version\":\s*\"[0-9.]+\"/, '\"version\": \"' + newVersion + '\"');
+            fs.writeFileSync('engine/main.py', mainPy, 'utf8');
+
+            // 2. engine/core/report.py
+            let reportPy = fs.readFileSync('engine/core/report.py', 'utf8');
+            reportPy = reportPy.replace(/\"vericore_version\":\s*\"[0-9.]+\"/, '\"vericore_version\": \"' + newVersion + '\"');
+            fs.writeFileSync('engine/core/report.py', reportPy, 'utf8');
+
+            // 3. ui/src/js/app.js
+            let appJs = fs.readFileSync('ui/src/js/app.js', 'utf8');
+            appJs = appJs.replace(/vericore_version:\s*'[0-9.]+'/, 'vericore_version: \'' + newVersion + '\'');
+            fs.writeFileSync('ui/src/js/app.js', appJs, 'utf8');
+
+            console.log('Successfully synced version ' + newVersion + ' to python engine and JS files!');
+          "
+
+      - name: Commit, tag, and push version bump
+        if: env.SHOULD_BUMP == 'true'
+        shell: bash
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          git add ui/package.json ui/package-lock.json ui/src/js/app.js engine/main.py engine/core/report.py
+          git commit -m "chore: bump version to ${{ env.NEW_VERSION }} [skip ci]"
+          git push origin HEAD:main
+
+          # Create and push the Git tag
+          git tag "${{ env.NEW_VERSION }}"
+          git push origin "${{ env.NEW_VERSION }}"
 
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -25,13 +118,6 @@ jobs:
       - name: Install engine dependencies
         working-directory: engine
         run: pip install -r requirements.txt
-
-      - name: Set up Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: "22"
-          cache: npm
-          cache-dependency-path: ui/package-lock.json
 
       - name: Install UI dependencies
         working-directory: ui
@@ -57,9 +143,11 @@ jobs:
             ui/dist/latest.yml
 
       - name: Publish GitHub release
-        if: startsWith(github.ref, 'refs/tags/v')
         uses: softprops/action-gh-release@v2
         with:
+          tag_name: ${{ env.NEW_VERSION }}
+          name: Release ${{ env.NEW_VERSION }}
+          generate_release_notes: true
           files: |
             ui/dist/*.exe
             ui/dist/*.blockmap
